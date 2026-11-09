@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>UltraRaumscanner Interface</title>
+
+		<link
+			href="https://fonts.cdnfonts.com/css/tw-cen-mt-std"
+			rel="stylesheet"
+			type="text/css"
+		/>
+		<style>
+			@import url("https://fonts.cdnfonts.com/css/tw-cen-mt-std");
+		</style>
+
+		<link rel="stylesheet/less" type="text/css" href="styles/styles.less" />
+		<script src="https://cdn.jsdelivr.net/npm/less"></script>
+
+		<script
+			src="https://kit.fontawesome.com/e2310f9d4a.js"
+			crossorigin="anonymous"
+		></script>
+	</head>
+	<body>
+		<nav>
+			<div id="topRow">
+				<svg
+					data-name="Ebene 1"
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 332.29 68.1"
+					width="180"
+					height="37"
+					class="uk-svg"
+				>
+					<defs>
+						<style>
+							.cls-1 {
+								fill: #004070;
+							}
+						</style>
+					</defs>
+					<path
+						class="cls-1"
+						d="M85.15,62.46a33.34,33.34,0,0,0-3.6-8.76,59.73,59.73,0,0,1-10.24,10c-12.93,10.32-31.52,19-49,23.6.34.61.7,1.22,1.08,1.81C40,86.37,58.12,79.6,72,72.06,78.05,68.74,82.43,65.5,85.15,62.46Zm-9.25-16A33.59,33.59,0,0,0,70.26,42a67.76,67.76,0,0,1-6.84,9C52.66,63.24,36.23,74.83,20.11,82.42c.21.57.43,1.15.67,1.71a165.18,165.18,0,0,0,43-24.6C70,54.64,73.94,50.24,75.9,46.46Zm2.7,31.05c-14.68,8-34.77,13.34-52.89,14.79A34,34,0,0,0,86.14,72.86,74.45,74.45,0,0,1,78.6,77.51ZM55.31,48.19a62.27,62.27,0,0,0,7.25-9.74A34,34,0,0,0,19,78.81,166.61,166.61,0,0,0,55.31,48.19Z"
+						transform="translate(-18.11 -36.82)"
+					></path>
+					<path
+						class="cls-1"
+						d="M115.69,95.57V55.34H97.19V46.83H142.7v8.51H124.21V95.57Z"
+						transform="translate(-18.11 -36.82)"
+					></path>
+					<path
+						class="cls-1"
+						d="M148.34,95.57V46.83h43.5v8.51H156.78V87.06h35.13v8.51ZM163,74.38V67.21h27v7.17Z"
+						transform="translate(-18.11 -36.82)"
+					></path>
+					<path
+						class="cls-1"
+						d="M199.21,95.57V87.06h36.54A7.39,7.39,0,0,0,241,85.31a6.06,6.06,0,0,0,1.84-4.62A5.91,5.91,0,0,0,241,76a7.94,7.94,0,0,0-5.26-1.57H213.36a17.92,17.92,0,0,1-6.2-1,13.51,13.51,0,0,1-4.7-2.89,12.65,12.65,0,0,1-2.94-4.39,14.65,14.65,0,0,1-1-5.57,14.91,14.91,0,0,1,1-5.45,11.55,11.55,0,0,1,2.88-4.33,13.8,13.8,0,0,1,4.73-2.85,18.53,18.53,0,0,1,6.43-1h35v8.51h-35a6.27,6.27,0,0,0-4.56,1.58,5.92,5.92,0,0,0-1.61,4.39A5.68,5.68,0,0,0,209,65.67a6.25,6.25,0,0,0,4.46,1.54h22.32q7.44,0,11.29,3.49t3.86,10.58A16.69,16.69,0,0,1,250,87a12.28,12.28,0,0,1-2.81,4.52,12.76,12.76,0,0,1-4.73,3,18.76,18.76,0,0,1-6.66,1.07H199.21Z"
+						transform="translate(-18.11 -36.82)"
+					></path>
+					<path
+						class="cls-1"
+						d="M305.93,95.57l-7.31-12.28H275.56l4-6.9h15L283.67,58.16,261.56,95.57h-9.72l28-46.66a6.4,6.4,0,0,1,1.74-2,4,4,0,0,1,2.42-.73,3.83,3.83,0,0,1,2.38.73,6.59,6.59,0,0,1,1.71,2l28.08,46.66Z"
+						transform="translate(-18.11 -36.82)"
+					></path>
+					<path
+						class="cls-1"
+						d="M323.39,95.57V55.34H304.88V46.83H350.4v8.51H331.9V95.57Z"
+						transform="translate(-18.11 -36.82)"
+					></path>
+				</svg>
+				<h1>
+					UltraRaumscanner
+					<span id="splitDot">•</span>
+					<span id="scanDropdown"
+						>Raumscan 1<i class="fa-solid fa-angle-down"></i
+					></span>
+				</h1>
+				<button id="start-scan">
+					<i class="fa-solid fa-plus"></i>Neuer Scan
+				</button>
+			</div>
+			<div id="bottomRow">
+				<div>
+					<p>Scale:</p>
+					<input
+						type="range"
+						id="scaleSlider"
+						min="0.1"
+						max="5"
+						step="0.1"
+						value="1"
+					/>
+					<p id="scaleValue">1.0</p>
+				</div>
+				<div>
+					<button id="centerButton">
+						<i class="fa-solid fa-crosshairs"></i>Zentrieren
+					</button>
+				</div>
+			</div>
+		</nav>
+		<section id="mapSection">
+			<canvas id="mapCanvas"></canvas>
+			<div id="robo">
+				<svg
+					version="1.0"
+					xmlns="http://www.w3.org/2000/svg"
+					width="930.000000pt"
+					height="1280.000000pt"
+					viewBox="0 0 930.000000 1280.000000"
+					preserveAspectRatio="xMidYMid meet"
+				>
+					<metadata>
+						Created by potrace 1.15, written by Peter Selinger
+						2001-2017
+					</metadata>
+					<g
+						transform="translate(0.000000,1280.000000) scale(0.100000,-0.100000)"
+						fill="#000000"
+						stroke="none"
+					>
+						<path
+							d="M4335 12789 c-1496 -104 -2843 -915 -3635 -2190 -232 -373 -414 -787
+-529 -1204 -305 -1107 -197 -2278 305 -3295 191 -387 372 -660 676 -1020 34
+-41 753 -976 1596 -2077 918 -1199 1555 -2022 1588 -2052 186 -170 442 -170
+628 0 33 30 670 853 1588 2052 843 1101 1562 2036 1596 2077 304 360 485 633
+676 1020 566 1147 629 2502 174 3695 -353 923 -967 1689 -1798 2242 -825 549
+-1864 821 -2865 752z m559 -2254 c224 -29 398 -81 601 -180 553 -268 931 -756
+1062 -1374 25 -116 27 -145 28 -366 0 -267 -10 -345 -70 -555 -161 -561 -586
+-1032 -1130 -1253 -201 -82 -365 -120 -592 -139 -294 -25 -593 23 -878 139
+-544 221 -969 692 -1130 1253 -60 210 -70 288 -70 555 1 221 3 250 28 366 112
+527 406 965 842 1252 177 116 437 227 637 271 209 46 467 58 672 31z"
+						/>
+					</g>
+				</svg>
+				<i class="fa-solid fa-taxi"></i>
+			</div>
+		</section>
+
+		<!-- Import TypeScript -->
+		<script src="https://cdn.jsdelivr.net/npm/typescript@5.3.3/lib/typescript.js"></script>
+		<script type="module">
+			const response = await fetch("./scripts/MapScript.ts");
+
+			if (!response.ok) {
+				throw new Error(
+					`MapScript.ts konnte nicht geladen werden: ${response.status}`,
+				);
+			}
+
+			const source = await response.text();
+
+			const { outputText } = ts.transpileModule(source, {
+				compilerOptions: {
+					target: ts.ScriptTarget.ES2020,
+					module: ts.ModuleKind.ES2020,
+				},
+			});
+
+			const script = document.createElement("script");
+			script.type = "module";
+			script.textContent = outputText;
+			document.body.appendChild(script);
+		</script>
+	</body>
+</html>
