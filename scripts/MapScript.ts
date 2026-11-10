@@ -28,8 +28,8 @@ const robo = document.getElementById("robo") as HTMLDivElement;
 const mapCanvas = document.getElementById("mapCanvas") as HTMLCanvasElement;
 const ctx = mapCanvas.getContext("2d");
 const rect = mapCanvas.getBoundingClientRect();
-const width = rect.width;
-const height = rect.height;
+let width = rect.width;
+let height = rect.height;
 mapCanvas.width = width;
 mapCanvas.height = height;
 
@@ -166,4 +166,25 @@ document.getElementById("centerButton")?.addEventListener("click", () => {
 	originX = width / 2;
 	originY = height / 2;
 	drawMap();
+});
+
+window.addEventListener("resize", () => {
+	const newRect = mapCanvas.getBoundingClientRect();
+	const newWidth = newRect.width;
+	const newHeight = newRect.height;
+
+	const deltaWidth = newWidth - width;
+	const deltaHeight = newHeight - height;
+
+	if (newWidth !== width || newHeight !== height) {
+		width = newWidth;
+		height = newHeight;
+		mapCanvas.width = width;
+		mapCanvas.height = height;
+
+		originX += deltaWidth / 2;
+		originY += deltaHeight / 2;
+
+		drawMap();
+	}
 });
