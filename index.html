@@ -78,6 +78,9 @@
 						>Raumscan 1<i class="fa-solid fa-angle-down"></i
 					></span>
 				</h1>
+				<button id="find-position">
+					<i class="fa-solid fa-magnifying-glass"></i>Position finden
+				</button>
 				<button id="start-scan">
 					<i class="fa-solid fa-plus"></i>Neuer Scan
 				</button>
@@ -96,9 +99,32 @@
 					<p id="scaleValue">1.0</p>
 				</div>
 				<div>
+					<p>Drehung:</p>
+					<input
+						type="range"
+						id="rotationSlider"
+						min="0"
+						max="360"
+						step="1"
+						value="0"
+					/>
+					<p id="rotationValue">0°</p>
+				</div>
+				<div>
 					<button id="centerButton">
 						<i class="fa-solid fa-crosshairs"></i>Zentrieren
 					</button>
+				</div>
+				<div>
+					<input
+						type="checkbox"
+						name="followRoboCheckbox"
+						id="followRoboCheckbox"
+					/>
+					Follow Robo
+				</div>
+				<div id="pointerInfo">
+					Pointer: <span id="pointerCoords">(0 / 0)</span>
 				</div>
 			</div>
 		</nav>
@@ -137,6 +163,10 @@
 					</g>
 				</svg>
 				<i class="fa-solid fa-taxi"></i>
+			</div>
+			<div id="measurementTape">
+				<span id="measureLabel">1cm</span>
+				<span id="measureBar"></span>
 			</div>
 		</section>
 

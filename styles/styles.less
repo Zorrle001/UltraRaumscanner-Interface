@@ -12,6 +12,8 @@ body {
     font-family: 'Tw Cen MT Std', Arial, sans-serif;
 
     user-select: none;
+    overflow: hidden;
+    //touch-action: none;
 }
 
 body {
@@ -101,10 +103,15 @@ body {
                 border-radius: 99rem;
                 font-size: 1rem;
 
-                margin-left: auto;
+
                 //font-weight: 500;
 
                 cursor: pointer;
+
+                &#find-position {
+                    margin-left: auto;
+                    margin-right: 0.5rem;
+                }
 
                 &:hover {
                     //background-color: rgb(60, 121, 235);
@@ -167,7 +174,13 @@ body {
                         font-size: 0.75rem;
                     }
                 }
+
+                &#pointerInfo {
+                    margin-left: auto;
+                }
             }
+
+
         }
 
     }
@@ -262,6 +275,26 @@ body {
                 transform: rotate(calc(-1 * var(--rotation)));
 
                 //animation: rotate 3s linear infinite reverse;
+            }
+        }
+
+        #measurementTape {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+
+            --width: 100px;
+
+            span#measureBar {
+                display: block;
+                width: var(--width);
+                height: 0.5rem;
+                border: 2px solid black;
+                border-top: 0px solid transparent;
             }
         }
     }
