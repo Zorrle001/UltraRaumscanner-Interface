@@ -5,6 +5,18 @@ type Point = {
 	timestamp: number;
 };
 
+type SimplePoint = {
+	x: number;
+	y: number;
+};
+
+type RoboPosition = {
+	x: number;
+	y: number;
+	timestamp: number;
+	path: SimplePoint[];
+};
+
 const points: Point[] = [
 	{
 		x: 12.09770229253918,
@@ -3608,11 +3620,13 @@ const points: Point[] = [
 	},
 ];
 
-const roboPosition: Point = {
-	x: 0,
+const roboPosition: RoboPosition = {
+	x: -150,
 	y: 0,
-	distance: 0,
+	//lastX: undefined,
+	//lastY: undefined,
 	timestamp: Date.now(),
+	path: [],
 };
 
 let roboRotation = 0;
@@ -3620,6 +3634,7 @@ let followRobo = false;
 let mapRotation = 0;
 
 const robo = document.getElementById("robo") as HTMLDivElement;
+const mapSection = document.getElementById("mapSection") as HTMLDivElement;
 const mapCanvas = document.getElementById("mapCanvas") as HTMLCanvasElement;
 const ctx = mapCanvas.getContext("2d");
 const rect = mapCanvas.getBoundingClientRect();
@@ -3653,8 +3668,8 @@ setInterval(() => {
 	roboRotation++;
 	roboRotation = roboRotation % 360;
 
-	roboPosition.x += Math.sin(degreeToRadient(roboRotation)) * 3;
-	roboPosition.y += Math.cos(degreeToRadient(roboRotation)) * 3;
+	roboPosition.x += Math.sin(degreeToRadient(roboRotation)) * 2;
+	roboPosition.y += Math.cos(degreeToRadient(roboRotation)) * 2;
 
 	//roboPosition.y -= 0.5;
 	//roboRotation += 0.5; // Increment rotation
@@ -3662,9 +3677,10 @@ setInterval(() => {
 	const y = -roboPosition.y * SCALE; // Invertiere Y-Achse für Canvas Coordinaten
 	setRoboRotation(roboRotation);
 	setRoboPosition(x, y);
-	console.log("robo pos", roboPosition.x, roboPosition.y, roboRotation);
+	//console.log("robo pos", roboPosition.x, roboPosition.y, roboRotation);
 	drawMap();
-}, 25);
+	drawRoboPath();
+}, 1000);
 
 let SCALE = 1;
 
@@ -3678,7 +3694,12 @@ document.getElementById("scaleSlider")?.addEventListener("input", (event) => {
 			.getElementById("measurementTape")!
 			.style.setProperty("--scale", SCALE.toString());*/
 		renderMeasurementTape();
+
+		const x = roboPosition.x * SCALE;
+		const y = -roboPosition.y * SCALE;
+		setRoboPosition(x, y);
 		drawMap();
+		drawRoboPath();
 	}
 });
 
@@ -3692,6 +3713,13 @@ document
 			document.getElementById("rotationValue")!.textContent =
 				`${mapRotation}°`;
 			drawMap();
+
+			const x = roboPosition.x * SCALE;
+			const y = -roboPosition.y * SCALE;
+			setRoboPosition(x, y);
+			setRoboRotation(roboRotation);
+
+			drawRoboPath();
 		}
 	});
 
@@ -3711,8 +3739,8 @@ function drawMap() {
 		const { x: rotatedCanvasX, y: rotatedCanvasY } = rotatePoint(
 			canvasX,
 			canvasY,
-			originX,
-			originY,
+			!followRobo ? originX : originX + roboPosition.x * SCALE,
+			!followRobo ? originY : originY - roboPosition.y * SCALE,
 			mapRotation,
 		);
 		drawX(ctx, rotatedCanvasX, rotatedCanvasY, 5);
@@ -3727,7 +3755,9 @@ let DRAG_ORIGIN_X = 0;
 let DRAG_ORIGIN_Y = 0;
 let isDragging = false;
 
-mapCanvas.addEventListener("pointerdown", (e) => {
+mapSection.addEventListener("pointerdown", (e) => {
+	if (followRobo) return; // KEIN DRAGGING IM FOLLOW MODE
+
 	e.preventDefault();
 	DRAG_X = (e.clientX - rect.left - originX) * SCALE;
 	DRAG_Y = (e.clientY - rect.top - originY) * -1 * SCALE;
@@ -3739,8 +3769,10 @@ mapCanvas.addEventListener("pointerdown", (e) => {
 	isDragging = true;
 });
 
-mapCanvas.addEventListener("pointermove", (e) => {
-	showPointerInfo(e);
+window.addEventListener("pointermove", (e) => {
+	if (mapSection.matches(":hover")) {
+		showPointerInfo(e);
+	}
 
 	if (!isDragging) return;
 	e.preventDefault();
@@ -3748,7 +3780,7 @@ mapCanvas.addEventListener("pointermove", (e) => {
 	calculateDragging(e);
 });
 
-mapCanvas.addEventListener("pointerup", (e) => {
+window.addEventListener("pointerup", (e) => {
 	if (!isDragging) return;
 	e.preventDefault();
 
@@ -3756,9 +3788,15 @@ mapCanvas.addEventListener("pointerup", (e) => {
 	isDragging = false;
 });
 
+mapSection.addEventListener("pointerleave", () => {
+	hidePointerInfo();
+});
+
 function showPointerInfo(e: PointerEvent) {
+	const pointerInfo = document.getElementById("pointerInfo");
 	const pointerCoords = document.getElementById("pointerCoords");
-	if (pointerCoords) {
+	if (pointerInfo && pointerCoords) {
+		pointerInfo.classList.remove("hidden");
 		let POINTER_X = (e.clientX - rect.left - originX) * SCALE;
 		let POINTER_Y = (e.clientY - rect.top - originY) * -1 * SCALE;
 		const { x: rotatedPointerX, y: rotatedPointerY } = rotatePoint(
@@ -3770,6 +3808,13 @@ function showPointerInfo(e: PointerEvent) {
 		);
 		pointerCoords.textContent = `(${Math.round(rotatedPointerX * 10) / 10} / ${Math.round(rotatedPointerY * 10) / 10})`;
 	}
+}
+
+function hidePointerInfo() {
+	const pointerInfo = document.getElementById("pointerInfo");
+	if (!pointerInfo) return;
+
+	pointerInfo.classList.add("hidden");
 }
 
 function calculateDragging(e: PointerEvent) {
@@ -3785,6 +3830,13 @@ function calculateDragging(e: PointerEvent) {
 
 	DRAG_X = NEW_DRAG_X;
 	DRAG_Y = NEW_DRAG_Y;
+
+	const x = roboPosition.x * SCALE;
+	const y = -roboPosition.y * SCALE; // Invertiere Y-Achse für Canvas Coordinaten
+	setRoboPosition(x, y);
+	//console.log("robo pos", roboPosition.x, roboPosition.y, roboRotation);
+	drawMap();
+	drawRoboPath();
 }
 
 function rotatePoint(
@@ -3824,6 +3876,7 @@ function drawX(
 
 	ctx.strokeStyle = "#000000"; // Linienfarbe
 	ctx.lineWidth = 3; // Linienstärke
+	ctx.lineCap = "round";
 	ctx.stroke();
 }
 
@@ -3839,7 +3892,7 @@ function setRoboPosition(x: number, y: number) {
 		robo.style.setProperty("--x", `${rotatedX}px`);
 		robo.style.setProperty("--y", `${rotatedY}px`);
 
-		console.log("ORIGIN NO FOLLOW", originX, originY);
+		//console.log("ORIGIN NO FOLLOW", originX, originY);
 	} else {
 		robo.style.setProperty("--x", `${width / 2}px`);
 		robo.style.setProperty("--y", `${height / 2}px`);
@@ -3847,12 +3900,84 @@ function setRoboPosition(x: number, y: number) {
 		originX = -x + width / 2;
 		originY = -y + height / 2;
 		console.log("ORIGIN FOLLOW", originX, originY);
-		drawMap();
+		//drawMap();
+	}
+
+	roboPosition.path.push({
+		x: x / SCALE,
+		y: y / SCALE,
+	});
+}
+
+function drawRoboPath() {
+	if (!ctx) return;
+	// TODO: path array will overflow!
+
+	let hasStartPoint = false;
+	for (const point of roboPosition.path) {
+		//const x = originX + point.x * SCALE;
+		//const y = originY + point.y * SCALE;
+
+		const canvasX = originX + point.x * SCALE;
+		const canvasY = originY + point.y * SCALE; // Invertiere Y-Achse für Canvas Coordinaten
+		const { x: rotatedCanvasX, y: rotatedCanvasY } = rotatePoint(
+			canvasX,
+			canvasY,
+			!followRobo ? originX : originX + roboPosition.x * SCALE,
+			!followRobo ? originY : originY - roboPosition.y * SCALE,
+			mapRotation,
+		);
+
+		if (!hasStartPoint) {
+			ctx.beginPath();
+			ctx.moveTo(rotatedCanvasX, rotatedCanvasY);
+			hasStartPoint = true;
+		} else {
+			ctx.lineTo(rotatedCanvasX, rotatedCanvasY);
+		}
+	}
+
+	if (hasStartPoint == true) {
+		/* const gradient = ctx.createLinearGradient(0, 0, width, height);
+		gradient.addColorStop(0, "red");
+		gradient.addColorStop(0.5, "purple");
+		gradient.addColorStop(1, "blue"); */
+
+		// Set the fill style and draw a rectangle
+		//ctx.fillStyle = gradient;
+
+		ctx.strokeStyle = "lime";
+		//ctx.strokeStyle = gradient;
+		ctx.lineWidth = 3;
+
+		// Enden der Linie abrunden
+		ctx.lineCap = "round";
+		// Ecken (Verbindungen zwischen zwei Linien) abrunden
+		//ctx.lineJoin = "round";
+
+		ctx.stroke();
 	}
 }
 
+function drawLine(x1: number, y1: number, x2: number, y2: number) {
+	if (!ctx) return;
+	console.log("DRAW LINE", x1, y1, x2, y2);
+	ctx.beginPath();
+	ctx.moveTo(x1, y1);
+	ctx.lineTo(x2, y2);
+	ctx.strokeStyle = "lime";
+	ctx.lineWidth = 15;
+
+	// Enden der Linie abrunden
+	ctx.lineCap = "round";
+	// Ecken (Verbindungen zwischen zwei Linien) abrunden
+	//ctx.lineJoin = "round";
+
+	ctx.stroke();
+}
+
 function setRoboRotation(angle: number) {
-	robo.style.setProperty("--rotation", `${angle}deg`);
+	robo.style.setProperty("--rotation", `${angle + mapRotation}deg`);
 }
 
 document.getElementById("centerButton")?.addEventListener("click", () => {

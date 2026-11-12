@@ -177,6 +177,10 @@ body {
 
                 &#pointerInfo {
                     margin-left: auto;
+
+                    &.hidden {
+                        display: none;
+                    }
                 }
             }
 
@@ -273,6 +277,9 @@ body {
                 color: white;
 
                 transform: rotate(calc(-1 * var(--rotation)));
+
+                // für richtige ausrichtung -> flip y-Achse
+                //transform: scaleX(-1) rotate(calc(1 * var(--rotation)));
 
                 //animation: rotate 3s linear infinite reverse;
             }
