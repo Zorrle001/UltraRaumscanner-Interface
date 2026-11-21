@@ -1,12 +1,12 @@
-const FPS = 2;
+const FPS = 60;
 const INTERVAL = 1000 / FPS;
 const TAU = Math.PI * 2;
 
 // Kreis konfigurieren
 
 const RADIUS = 150;
-const CENTER_X = RADIUS;
-const CENTER_Y = RADIUS;
+const CENTER_X = 0;
+const CENTER_Y = 0;
 const LAP_SECONDS = 8; // Sekunden pro Runde
 
 const server = Bun.serve({

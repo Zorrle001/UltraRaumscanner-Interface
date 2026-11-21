@@ -3625,13 +3625,21 @@ let hasFirstPosition = false;
 ] satisfies Point[];
 
 function drawEverything() {
-	const x = roboPosition.x * SCALE;
+	/*const x = roboPosition.x * SCALE;
 	const y = -roboPosition.y * SCALE; // Invertiere Y-Achse für Canvas Coordinaten
 	setRoboRotationDegree(roboRotation);
 	setRoboPosition(x, y);
 	//console.log("robo pos", roboPosition.x, roboPosition.y, roboRotation);
 	drawMap();
-	drawRoboPath();
+	drawRoboPath();*/
+
+	drawMap();
+	setRoboPositionByWorldCoordsAndDrawPath(roboPosition.x, roboPosition.y);
+	setRoboRotationDegree(roboRotation);
+
+	if (followRobo) {
+		redrawFollowView();
+	}
 }
 
 function setPublicRoboPosition(x: number, y: number) {
@@ -3643,12 +3651,8 @@ function setPublicRoboPosition(x: number, y: number) {
 	hasFirstPosition = true;
 	roboPosition.x = x;
 	roboPosition.y = y;
-	const xScaled = x * SCALE;
-	const yScaled = -y * SCALE;
-	setRoboPosition(xScaled, yScaled);
-	//drawMap();
 
-	clearMap();
+	setRoboPositionByWorldCoordsAndDrawPath(x, y); // FIRST POSITION THEN DRAW NEEDED IN FOLLOW MODE
 	drawMap();
 	drawRoboPath();
 }
@@ -3678,13 +3682,13 @@ const roboPosition: RoboPosition = (globalThis as any).roboPosition;
 let roboRotation = 0;
 let followRobo = false;
 let lockOrientation = false;
-let mapRotation = 0;
+let mapProjectionRotation = 0;
 
 const robo = document.getElementById("robo") as HTMLDivElement;
 const mapSection = document.getElementById("mapSection") as HTMLDivElement;
 const mapCanvas = document.getElementById("mapCanvas") as HTMLCanvasElement;
 const ctx = mapCanvas.getContext("2d");
-const rect = mapCanvas.getBoundingClientRect();
+let rect = mapCanvas.getBoundingClientRect();
 let width = rect.width;
 let height = rect.height;
 mapCanvas.width = width;
@@ -3799,10 +3803,10 @@ document
 		const target = event.target as HTMLInputElement;
 		const newMapRotation = parseFloat(target.value);
 		if (!isNaN(newMapRotation)) {
-			const oldMapRotation = mapRotation;
-			mapRotation = newMapRotation;
+			const oldMapRotation = mapProjectionRotation;
+			mapProjectionRotation = newMapRotation;
 			document.getElementById("rotationValue")!.textContent =
-				`${mapRotation}°`;
+				`${mapProjectionRotation}°`;
 
 			const delta_rotation = newMapRotation - oldMapRotation;
 
@@ -3851,6 +3855,7 @@ function drawMap() {
 	ctx.clearRect(0, 0, width, height);
 
 	let i = 0;
+	ctx.beginPath();
 	for (const point of MAP_POINTS) {
 		if (point === undefined) continue;
 		//console.log("POINT", point);
@@ -3867,18 +3872,19 @@ function drawMap() {
 		const { x: rotatedCanvasX, y: rotatedCanvasY } = rotatePoint(
 			canvasX,
 			canvasY,
-			!followRobo
+			!followRobo || true
 				? canvas_originX
 				: canvas_originX + roboPosition.x * SCALE,
-			!followRobo
+			!followRobo || true
 				? canvas_originY
 				: canvas_originY - roboPosition.y * SCALE,
-			mapRotation,
+			mapProjectionRotation,
 		);
-		drawX(ctx, rotatedCanvasX, rotatedCanvasY, 5);
+		drawX(ctx, rotatedCanvasX, rotatedCanvasY, 5, true);
 
 		i++;
 	}
+	ctx.stroke();
 }
 
 drawMap();
@@ -3938,7 +3944,7 @@ function showPointerInfo(e: PointerEvent) {
 			POINTER_Y,
 			canvas_originX,
 			canvas_originY,
-			mapRotation,
+			mapProjectionRotation,
 		);
 		pointerCoords.textContent = `(${Math.round(rotatedPointerX * 10) / 10} / ${Math.round(rotatedPointerY * 10) / 10})`;
 	}
@@ -3998,8 +4004,9 @@ function drawX(
 	x: number,
 	y: number,
 	size: number,
+	noStroke: boolean = false,
 ) {
-	ctx.beginPath();
+	if (noStroke) ctx.beginPath();
 	// Erste Diagonale (von oben links nach unten rechts)
 	ctx.moveTo(x - size, y - size);
 	ctx.lineTo(x + size, y + size);
@@ -4011,7 +4018,7 @@ function drawX(
 	ctx.strokeStyle = "#000000"; // Linienfarbe
 	ctx.lineWidth = 3; // Linienstärke
 	ctx.lineCap = "round";
-	ctx.stroke();
+	if (noStroke) ctx.stroke();
 }
 
 /*
@@ -4028,7 +4035,7 @@ function setRoboPosition(x: number, y: number) {
 			canvas_originY + y,
 			canvas_originX,
 			canvas_originY,
-			mapRotation,
+			mapProjectionRotation,
 		);
 		robo.style.setProperty("--x", `${rotatedX}px`);
 		robo.style.setProperty("--y", `${rotatedY}px`);
@@ -4038,10 +4045,12 @@ function setRoboPosition(x: number, y: number) {
 		robo.style.setProperty("--x", `${width / 2}px`);
 		robo.style.setProperty("--y", `${height / 2}px`);
 
-		canvas_originX = -x + width / 2;
-		canvas_originY = -y + height / 2;
+		//canvas_originX = -x + width / 2;
+		//canvas_originY = -y + height / 2;
 		//console.log("ORIGIN FOLLOW", originX, originY);
 		//drawMap();
+
+		setCanvasOriginToRoboPosition();
 	}
 
 	//console.log("PUSH", x, y);
@@ -4094,7 +4103,7 @@ function setRoboPositionByWorldCoordsAndDrawPath(
 			canvas_originY + canvas_unrotatedY,
 			canvas_originX,
 			canvas_originY,
-			mapRotation,
+			mapProjectionRotation,
 		);
 		robo.style.setProperty("--x", `${canvas_rotatedX}px`);
 		robo.style.setProperty("--y", `${canvas_rotatedY}px`);
@@ -4106,10 +4115,12 @@ function setRoboPositionByWorldCoordsAndDrawPath(
 
 		// ROTATION USELESS, DA ROTATION UM roboPos (selben Punkt) -> kein Veränderung
 
-		canvas_originX = -canvas_unrotatedX + width / 2;
-		canvas_originY = -canvas_unrotatedY + height / 2;
+		//canvas_originX = -canvas_unrotatedX + width / 2;
+		//canvas_originY = -canvas_unrotatedY + height / 2;
 		//console.log("ORIGIN FOLLOW", originX, originY);
 		//drawMap();
+
+		setCanvasOriginToRoboPosition();
 	}
 
 	// TODO: FIX ERROR: Inverted world_y in roboPosition.path
@@ -4151,13 +4162,13 @@ function drawRoboPath() {
 		const { x: rotatedCanvasX, y: rotatedCanvasY } = rotatePoint(
 			canvasX,
 			canvasY,
-			!followRobo
+			!followRobo || true
 				? canvas_originX
 				: canvas_originX + roboPosition.x * SCALE,
-			!followRobo
+			!followRobo || true
 				? canvas_originY
 				: canvas_originY - roboPosition.y * SCALE,
-			mapRotation,
+			mapProjectionRotation,
 		);
 
 		if (!hasStartPoint) {
@@ -4191,33 +4202,27 @@ function drawRoboPath() {
 	}
 }
 
-function drawLine(x1: number, y1: number, x2: number, y2: number) {
-	if (!ctx) return;
-	console.log("DRAW LINE", x1, y1, x2, y2);
-	ctx.beginPath();
-	ctx.moveTo(x1, y1);
-	ctx.lineTo(x2, y2);
-	ctx.strokeStyle = "lime";
-	ctx.lineWidth = 15;
-
-	// Enden der Linie abrunden
-	ctx.lineCap = "round";
-	// Ecken (Verbindungen zwischen zwei Linien) abrunden
-	//ctx.lineJoin = "round";
-
-	ctx.stroke();
-}
-
 function setRoboRotationDegree(angle: number) {
 	roboRotation = angle;
 	roboPosition.angle = angle;
 
-	robo.style.setProperty("--rotation", `${angle + mapRotation}deg`);
+	robo.style.setProperty("--rotation", `${angle + mapProjectionRotation}deg`);
 
 	if (lockOrientation && followRobo) {
-		mapRotation = -angle;
-		drawMap();
-		drawRoboPath();
+		robo.style.setProperty("--rotation", `${0}deg`);
+		mapProjectionRotation = 360 - angle;
+
+		//setRoboPositionByWorldCoordsAndDrawPath(roboPosition.x, roboPosition.y);
+		//drawMap();
+		//drawRoboPath();
+		console.log("--rotation locked", "0deg", mapProjectionRotation);
+	} else {
+		console.log(
+			"--rotation",
+			angle + mapProjectionRotation + "deg",
+			angle,
+			mapProjectionRotation,
+		);
 	}
 }
 
@@ -4258,7 +4263,7 @@ followRoboCheckbox?.addEventListener("input", () => {
 
 		// Nordierung aus dem Slider wiederherstellen
 		if (!isNaN(northRotation)) {
-			mapRotation = northRotation;
+			mapProjectionRotation = northRotation;
 		}
 
 		const canvas_unrotatedX = roboPosition.x * SCALE;
@@ -4270,24 +4275,25 @@ followRoboCheckbox?.addEventListener("input", () => {
 			canvas_unrotatedY,
 			0,
 			0,
-			mapRotation,
+			mapProjectionRotation,
 		);
 
 		// Origin so setzen, dass der Roboter in der Bildmitte liegt
 		canvas_originX = width / 2 - rx;
 		canvas_originY = height / 2 - ry;
 
+		setRoboRotationDegree(roboRotation);
 		drawMap();
 		//setRoboPosition(canvas_unrotatedX, canvas_unrotatedY);
 		setRoboPositionByWorldCoordsAndDrawPath(roboPosition.x, roboPosition.y);
-		setRoboRotationDegree(roboRotation);
 
 		//drawRoboPath();
 	} else {
 		// FOLLOW wurde aktiviert
+		setRoboPositionByWorldCoordsAndDrawPath(roboPosition.x, roboPosition.y);
 		setCanvasOriginToRoboPosition();
 		drawMap();
-		setRoboPositionByWorldCoordsAndDrawPath(roboPosition.x, roboPosition.y);
+		drawRoboPath();
 	}
 });
 
@@ -4298,26 +4304,46 @@ lockOrientationCheckbox?.addEventListener("input", () => {
 		.getElementById("rotationDiv")
 		?.classList.toggle("disabled", lockOrientation && followRobo);
 
+	console.log({
+		roboRotation,
+		sliderRotation: (
+			document.getElementById("rotationSlider") as HTMLInputElement | null
+		)?.valueAsNumber,
+		mapRotation: mapProjectionRotation,
+		origin: [canvas_originX, canvas_originY],
+	});
+
 	if (!lockOrientation && followRobo) {
 		const target = document.getElementById(
 			"rotationSlider",
 		) as HTMLInputElement;
 		const newRotation = parseFloat(target.value);
 		if (!isNaN(newRotation)) {
-			mapRotation = newRotation;
-			drawMap();
+			mapProjectionRotation = newRotation;
+
+			/*setRoboRotationDegree(roboPosition.angle);
 			setRoboPositionByWorldCoordsAndDrawPath(
 				roboPosition.x,
 				roboPosition.y,
 			);
-			setRoboRotationDegree(roboPosition.angle);
+			setCanvasOriginToRoboPosition();
+			drawMap();
+			drawRoboPath();*/
+
+			redrawFollowView();
 		}
-	} else if (lockOrientation && !followRobo) {
+	} else if (lockOrientation && followRobo) {
+		setRoboRotationDegree(roboPosition.angle);
+		setRoboPositionByWorldCoordsAndDrawPath(roboPosition.x, roboPosition.y);
+		setCanvasOriginToRoboPosition();
+		drawMap();
+		drawRoboPath();
 	}
 });
 
 window.addEventListener("resize", () => {
 	const newRect = mapCanvas.getBoundingClientRect();
+
 	const newWidth = newRect.width;
 	const newHeight = newRect.height;
 
@@ -4325,6 +4351,7 @@ window.addEventListener("resize", () => {
 	const deltaHeight = newHeight - height;
 
 	if (newWidth !== width || newHeight !== height) {
+		rect = newRect;
 		width = newWidth;
 		height = newHeight;
 		mapCanvas.width = width;
@@ -4401,10 +4428,24 @@ function setCanvasOriginToRoboPosition() {
 		canvas_unrotatedY,
 		0,
 		0,
-		mapRotation,
+		mapProjectionRotation,
 	);
 
 	// Origin so setzen, dass der Roboter in der Bildmitte liegt
 	canvas_originX = width / 2 - rx;
 	canvas_originY = height / 2 - ry;
+}
+
+function redrawFollowView() {
+	// Aktualisiert im Lock-Modus auch mapRotation.
+	setRoboRotationDegree(roboRotation);
+
+	// Benutzt den jetzt aktuellen Winkel.
+	setCanvasOriginToRoboPosition();
+
+	robo.style.setProperty("--x", `${width / 2}px`);
+	robo.style.setProperty("--y", `${height / 2}px`);
+
+	drawMap();
+	drawRoboPath();
 }

@@ -9,7 +9,7 @@ function detailed_origin_scaling(oldScale: number, newScale: number) {
 		ry_old,
 		0,
 		0,
-		-mapRotation,
+		-mapProjectionRotation,
 	);
 	console.log("REAL ORIGIN x:", x_old / oldScale, "y:", -y_old / oldScale);
 
@@ -28,7 +28,7 @@ function detailed_origin_scaling(oldScale: number, newScale: number) {
 		y_new,
 		0,
 		0,
-		mapRotation,
+		mapProjectionRotation,
 	);
 
 	// DIE ROTATIONS HEBEN SICH AUF -> KÜRZBAR AUF:
@@ -36,4 +36,21 @@ function detailed_origin_scaling(oldScale: number, newScale: number) {
 
 	canvas_originX = width / 2 - (width / 2 - canvas_originX) * k;
 	canvas_originY = height / 2 - (height / 2 - canvas_originY) * k;
+}
+
+function drawLine(x1: number, y1: number, x2: number, y2: number) {
+	if (!ctx) return;
+	console.log("DRAW LINE", x1, y1, x2, y2);
+	ctx.beginPath();
+	ctx.moveTo(x1, y1);
+	ctx.lineTo(x2, y2);
+	ctx.strokeStyle = "lime";
+	ctx.lineWidth = 15;
+
+	// Enden der Linie abrunden
+	ctx.lineCap = "round";
+	// Ecken (Verbindungen zwischen zwei Linien) abrunden
+	//ctx.lineJoin = "round";
+
+	ctx.stroke();
 }
