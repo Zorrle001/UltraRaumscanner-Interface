@@ -73,11 +73,17 @@
 				</svg>
 				<h1>
 					UltraRaumscanner
-					<span id="splitDot">•</span>
-					<span id="scanDropdown"
-						>Raumscan 1<i class="fa-solid fa-angle-down"></i
-					></span>
+					<!-- <span id="splitDot">•</span>
+					<button id="scanDropdown" popovertarget="scanPopover">
+						Raumscan 1<i class="fa-solid fa-angle-down"></i>
+					</button> -->
 				</h1>
+				<ul id="scanPopover" popover>
+					<li><i class="fa-solid fa-check"></i>Raumscan 1</li>
+					<li><i class="fa-solid fa-check"></i>Raumscan 2</li>
+					<li><i class="fa-solid fa-check"></i>Raumscan 2</li>
+				</ul>
+				<p id="connectionLabel">Verbinden... ⚪</p>
 				<button id="find-position">
 					<i class="fa-solid fa-magnifying-glass"></i>Position finden
 				</button>
@@ -98,7 +104,7 @@
 					/>
 					<p id="scaleValue">1.0</p>
 				</div>
-				<div>
+				<div id="rotationDiv">
 					<p>Drehung:</p>
 					<input
 						type="range"
@@ -123,6 +129,14 @@
 					/>
 					Follow Robo
 				</div>
+				<div id="lockOrientationDiv" class="disabled">
+					<input
+						type="checkbox"
+						name="lockOrientationCheckbox"
+						id="lockOrientationCheckbox"
+					/>
+					Lock Orientation
+				</div>
 				<div id="pointerInfo" class="hidden">
 					Pointer: <span id="pointerCoords">(0 / 0)</span>
 				</div>
@@ -130,7 +144,8 @@
 		</nav>
 		<section id="mapSection">
 			<canvas id="mapCanvas"></canvas>
-			<div id="robo">
+			<div id="originIndicator"></div>
+			<div id="robo" class="hidden">
 				<svg
 					version="1.0"
 					xmlns="http://www.w3.org/2000/svg"
@@ -171,6 +186,7 @@
 				<span id="measureLabel">1cm</span>
 				<span id="measureBar"></span>
 			</div>
+			<p id="loadingLabel">Warten auf Robo Daten...</p>
 		</section>
 
 		<!-- Import TypeScript -->
@@ -197,6 +213,32 @@
 			script.type = "module";
 			script.textContent = outputText;
 			document.body.appendChild(script);
+
+			const response2 = await fetch("./scripts/WebSocket.ts");
+			console.log(response2);
+
+			if (!response2.ok) {
+				throw new Error(
+					`WebSocketScript.ts konnte nicht geladen werden: ${response2.status}`,
+				);
+			}
+
+			const source2 = await response2.text();
+
+			const { outputText: outputText2 } = ts.transpileModule(source2, {
+				compilerOptions: {
+					target: ts.ScriptTarget.ES2020,
+					module: ts.ModuleKind.ES2020,
+				},
+			});
+
+			const websocketScript = document.createElement("script");
+			websocketScript.type = "module";
+			websocketScript.id = "WebSocketScript";
+			websocketScript.textContent = outputText2;
+			document.body.appendChild(websocketScript);
+
+			console.log(websocketScript);
 		</script>
 	</body>
 </html>

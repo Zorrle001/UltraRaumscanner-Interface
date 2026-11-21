@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="de">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>WebSocket-FPS</title>
+		<style>
+			body {
+				background: #151515;
+				color: #eee;
+				font-family: system-ui, sans-serif;
+				text-align: center;
+				padding: 50px 16px;
+			}
+			#fps {
+				font-size: 80px;
+				font-weight: bold;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>WebSocket-FPS</h1>
+		<p id="status">Verbinde …</p>
+		<div id="fps">0</div>
+		<p>Nachrichten / Sekunde</p>
+
+		<script>
+			const status = document.getElementById("status");
+			const display = document.getElementById("fps");
+			const ws = new WebSocket("ws://192.168.137.51:5000");
+
+			let count = 0;
+			let last = performance.now();
+
+			ws.binaryType = "arraybuffer";
+			ws.onopen = () => (status.textContent = "Verbunden 🟢");
+			ws.onmessage = async () => count++;
+			ws.onerror = () => (status.textContent = "Verbindungsfehler 🔴");
+			ws.onclose = () => (status.textContent = "Verbindung geschlossen");
+
+			setInterval(() => {
+				const now = performance.now();
+				display.textContent = ((count * 1000) / (now - last)).toFixed(
+					1,
+				);
+				count = 0;
+				last = now;
+			}, 1000);
+		</script>
+	</body>
+</html>
