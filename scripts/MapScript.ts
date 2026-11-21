@@ -7,8 +7,8 @@ type Point = {
 };
 
 type SimplePoint = {
-	x: number;
-	y: number;
+	worldX: number;
+	worldY: number;
 	timestamp: number;
 };
 
@@ -3624,46 +3624,25 @@ let hasFirstPosition = false;
 	},
 ] satisfies Point[];
 
-function drawEverything() {
-	/*const x = roboPosition.x * SCALE;
-	const y = -roboPosition.y * SCALE; // Invertiere Y-Achse für Canvas Coordinaten
-	setRoboRotationDegree(roboRotation);
-	setRoboPosition(x, y);
-	//console.log("robo pos", roboPosition.x, roboPosition.y, roboRotation);
-	drawMap();
-	drawRoboPath();*/
-
-	drawMap();
-	setRoboPositionByWorldCoordsAndDrawPath(roboPosition.x, roboPosition.y);
-	setRoboRotationDegree(roboRotation);
-
-	if (followRobo) {
-		redrawFollowView();
-	}
-}
-
-function setPublicRoboPosition(x: number, y: number) {
+function setPublicRoboPosition(x: number, y: number, angleDegree: number) {
 	if (!hasFirstPosition) {
 		robo.classList.remove("hidden");
 		document.getElementById("loadingLabel")?.classList.add("hidden");
+		hasFirstPosition = true;
 	}
 
-	hasFirstPosition = true;
 	roboPosition.x = x;
 	roboPosition.y = y;
 
-	setRoboPositionByWorldCoordsAndDrawPath(x, y); // FIRST POSITION THEN DRAW NEEDED IN FOLLOW MODE
-	drawMap();
-	drawRoboPath();
+	roboPosition.angle = angleDegree;
+
+	addRoboPathPoint();
+	render();
 }
 
-(globalThis as any).drawEverything = drawEverything;
 (globalThis as any).setPublicRoboPosition = setPublicRoboPosition;
-(globalThis as any).setPublicRoboRotationRadiant = setPublicRoboRotationRadiant;
-
-function setPublicRoboRotationRadiant(angle: number) {
-	setRoboRotationDegree(radientToDegree(angle));
-}
+(globalThis as any).radientToDegree = radientToDegree;
+(globalThis as any).render = render;
 
 let MAP_POINTS: Point[] = (globalThis as any).MAP_POINTS;
 
@@ -3679,9 +3658,9 @@ let MAP_POINTS: Point[] = (globalThis as any).MAP_POINTS;
 const roboPosition: RoboPosition = (globalThis as any).roboPosition;
 //roboPosition.x = 12;
 
-let roboRotation = 0;
 let followRobo = false;
 let lockOrientation = false;
+let sliderMapProjectionRotation = 0;
 let mapProjectionRotation = 0;
 
 const robo = document.getElementById("robo") as HTMLDivElement;
@@ -3741,100 +3720,57 @@ document.getElementById("scaleSlider")?.addEventListener("input", (event) => {
 	if (!isNaN(newScale) && newScale > 0) {
 		let oldScale = SCALE;
 
-		console.log(
-			"OLD SCALE",
-			oldScale,
-			"originX",
-			canvas_originX,
-			"originY",
-			canvas_originY,
-		);
-
 		SCALE = newScale;
 		document.getElementById("scaleValue")!.textContent = SCALE.toString();
 
-		/*document
-			.getElementById("measurementTape")!
-			.style.setProperty("--scale", SCALE.toString());*/
 		renderMeasurementTape();
 
-		// Origin so setzen, dass der Roboter in der Bildmitte liegt
-		//originX = width / 2 - rx_new;
-		//originY = height / 2 - ry_new;
-
+		// Behalte origin in der mitte nach zoom
 		const k = newScale / oldScale;
 
 		canvas_originX = width / 2 - (width / 2 - canvas_originX) * k;
 		canvas_originY = height / 2 - (height / 2 - canvas_originY) * k;
 
-		//zoomAt(newScale, originX, originY);
-		const x = roboPosition.x * SCALE;
-		const y = -roboPosition.y * SCALE;
-		setRoboPosition(x, y);
-		drawMap();
-		drawRoboPath();
-
-		console.log(
-			"NEW SCALE",
-			newScale,
-			"originX",
-			canvas_originX,
-			"originY",
-			canvas_originY,
-		);
+		render();
 	}
 });
 
-function zoomAt(newScale, sx, sy) {
-	// Weltkoordinate unter dem Bildschirmpunkt (vor dem Zoom)
-	const wx = (sx - canvas_originX) / SCALE;
-	const wy = (sy - canvas_originY) / SCALE;
+const rotationSlider = document.getElementById(
+	"rotationSlider",
+) as HTMLInputElement;
 
-	SCALE = newScale;
+rotationSlider.addEventListener("input", (event) => {
+	const newMapRotation = parseFloat(rotationSlider.value);
+	if (isNaN(newMapRotation)) return;
 
-	// Origin so verschieben, dass derselbe Weltpunkt wieder unter (sx, sy) liegt
-	canvas_originX = sx - wx * SCALE;
-	canvas_originY = sy - wy * SCALE;
-}
+	sliderMapProjectionRotation = newMapRotation;
+	document.getElementById("rotationValue")!.textContent =
+		`${sliderMapProjectionRotation}°`;
 
-document
-	.getElementById("rotationSlider")
-	?.addEventListener("input", (event) => {
-		const target = event.target as HTMLInputElement;
-		const newMapRotation = parseFloat(target.value);
-		if (!isNaN(newMapRotation)) {
-			const oldMapRotation = mapProjectionRotation;
-			mapProjectionRotation = newMapRotation;
-			document.getElementById("rotationValue")!.textContent =
-				`${mapProjectionRotation}°`;
+	if (lockOrientation && followRobo) {
+		return;
+	}
 
-			const delta_rotation = newMapRotation - oldMapRotation;
+	const oldMapRotation = mapProjectionRotation;
+	mapProjectionRotation = sliderMapProjectionRotation;
 
-			const { x, y } = rotatePoint(
-				width / 2 - canvas_originX,
-				height / 2 - canvas_originY,
-				0,
-				0,
-				delta_rotation,
-			);
+	// behalte origin in der mitte
+	const delta_rotation = newMapRotation - oldMapRotation;
 
-			canvas_originX = width / 2 - x;
-			canvas_originY = height / 2 - y;
+	const { x, y } = rotatePoint(
+		width / 2 - canvas_originX,
+		height / 2 - canvas_originY,
+		0,
+		0,
+		delta_rotation,
+	);
 
-			drawMap();
+	canvas_originX = width / 2 - x;
+	canvas_originY = height / 2 - y;
 
-			/*const x = roboPosition.x * SCALE;
-			const y = -roboPosition.y * SCALE;
-			setRoboPosition(x, y);*/
-			setRoboPositionByWorldCoordsAndDrawPath(
-				roboPosition.x,
-				roboPosition.y,
-			);
-			setRoboRotationDegree(roboRotation);
-
-			//drawRoboPath();
-		}
-	});
+	render();
+	//setRoboRotationDegree(roboRotation); ??? needed?
+});
 
 console.log(mapCanvas);
 
@@ -3887,7 +3823,8 @@ function drawMap() {
 	ctx.stroke();
 }
 
-drawMap();
+//drawMap();
+render();
 
 let DRAG_X = 0;
 let DRAG_Y = 0;
@@ -3971,12 +3908,7 @@ function calculateDragging(e: PointerEvent) {
 	DRAG_X = NEW_DRAG_X;
 	DRAG_Y = NEW_DRAG_Y;
 
-	const x = roboPosition.x * SCALE;
-	const y = -roboPosition.y * SCALE; // Invertiere Y-Achse für Canvas Coordinaten
-	setRoboPosition(x, y);
-	//console.log("robo pos", roboPosition.x, roboPosition.y, roboRotation);
-	drawMap();
-	drawRoboPath();
+	render();
 }
 
 function rotatePoint(
@@ -4021,144 +3953,16 @@ function drawX(
 	if (noStroke) ctx.stroke();
 }
 
-/*
-PRE TODOS:
-const x = roboPosition.x * SCALE;
-const y = -roboPosition.y * SCALE;
-*/
-function setRoboPosition(x: number, y: number) {
-	if (!hasFirstPosition) return;
-
-	if (!followRobo) {
-		const { x: rotatedX, y: rotatedY } = rotatePoint(
-			canvas_originX + x,
-			canvas_originY + y,
-			canvas_originX,
-			canvas_originY,
-			mapProjectionRotation,
-		);
-		robo.style.setProperty("--x", `${rotatedX}px`);
-		robo.style.setProperty("--y", `${rotatedY}px`);
-
-		//console.log("ORIGIN NO FOLLOW", originX, originY);
-	} else {
-		robo.style.setProperty("--x", `${width / 2}px`);
-		robo.style.setProperty("--y", `${height / 2}px`);
-
-		//canvas_originX = -x + width / 2;
-		//canvas_originY = -y + height / 2;
-		//console.log("ORIGIN FOLLOW", originX, originY);
-		//drawMap();
-
-		setCanvasOriginToRoboPosition();
-	}
-
-	//console.log("PUSH", x, y);
-	//roboPosition.path.push();
-	roboPosition.path.unshift({
-		// shift other points back
-		x: x / SCALE,
-		y: y / SCALE,
-		timestamp: performance.now(),
-	});
-
-	if (!roboPosition.path[0] || !roboPosition.path[0].timestamp) return;
-	let latestTimestamp = roboPosition.path[0].timestamp; // Newest point on array start
-	let maxTimestampDelta = 25 * 1000; // 5s in ms
-
-	for (let i = roboPosition.path.length - 1; i >= 0; i--) {
-		const point = roboPosition.path[i];
-		if (latestTimestamp - point.timestamp > maxTimestampDelta) {
-			roboPosition.path.pop();
-		} else {
-			// Punkte immer in richtiger timestamp reihenfolge - sobald ein Punkt von hinten erreicht wird der "jung" genug ist müssen es die davor auch sein -> break
-			break;
-		}
-	}
-	/* for (const point of roboPosition.path) {
-		if (!latestTimestamp) {
-			latestTimestamp = point.timestamp;
-		}
-		if (point.timestamp - latestTimestamp > maxTimestampDelta) {
-		}
-	}
-	while (roboPosition.path.length >= 35) {
-		// remove oldest point on array end
-		const entfernterPunkt = roboPosition.path.pop();
-	} */
-}
-
-function setRoboPositionByWorldCoordsAndDrawPath(
-	world_x: number,
-	world_y: number,
-) {
-	if (!hasFirstPosition) return;
-
-	const canvas_unrotatedX = world_x * SCALE;
-	const canvas_unrotatedY = -world_y * SCALE;
-
-	if (!followRobo) {
-		const { x: canvas_rotatedX, y: canvas_rotatedY } = rotatePoint(
-			canvas_originX + canvas_unrotatedX,
-			canvas_originY + canvas_unrotatedY,
-			canvas_originX,
-			canvas_originY,
-			mapProjectionRotation,
-		);
-		robo.style.setProperty("--x", `${canvas_rotatedX}px`);
-		robo.style.setProperty("--y", `${canvas_rotatedY}px`);
-
-		//console.log("ORIGIN NO FOLLOW", originX, originY);
-	} else {
-		robo.style.setProperty("--x", `${width / 2}px`);
-		robo.style.setProperty("--y", `${height / 2}px`);
-
-		// ROTATION USELESS, DA ROTATION UM roboPos (selben Punkt) -> kein Veränderung
-
-		//canvas_originX = -canvas_unrotatedX + width / 2;
-		//canvas_originY = -canvas_unrotatedY + height / 2;
-		//console.log("ORIGIN FOLLOW", originX, originY);
-		//drawMap();
-
-		setCanvasOriginToRoboPosition();
-	}
-
-	// TODO: FIX ERROR: Inverted world_y in roboPosition.path
-	roboPosition.path.unshift({
-		// shift other points back
-		x: world_x,
-		y: -world_y,
-		timestamp: performance.now(),
-	});
-
-	if (!roboPosition.path[0] || !roboPosition.path[0].timestamp) return;
-	let latestTimestamp = roboPosition.path[0].timestamp; // Newest point on array start
-	let maxTimestampDelta = 20 * 1000; // 5s in ms
-
-	for (let i = roboPosition.path.length - 1; i >= 0; i--) {
-		const point = roboPosition.path[i];
-		if (latestTimestamp - point.timestamp > maxTimestampDelta) {
-			roboPosition.path.pop();
-		} else {
-			// Punkte immer in richtiger timestamp reihenfolge - sobald ein Punkt von hinten erreicht wird der "jung" genug ist müssen es die davor auch sein -> break
-			break;
-		}
-	}
-
-	drawRoboPath();
-}
-
 function drawRoboPath() {
 	if (!ctx) return;
-	// TODO: path array will overflow!
 
 	let hasStartPoint = false;
 	for (const point of roboPosition.path) {
 		//const x = originX + point.x * SCALE;
 		//const y = originY + point.y * SCALE;
 
-		const canvasX = canvas_originX + point.x * SCALE;
-		const canvasY = canvas_originY + point.y * SCALE; // Invertiere Y-Achse für Canvas Coordinaten
+		const canvasX = canvas_originX + point.worldX * SCALE;
+		const canvasY = canvas_originY - point.worldY * SCALE; // Invertiere Y-Achse für Canvas Coordinaten
 		const { x: rotatedCanvasX, y: rotatedCanvasY } = rotatePoint(
 			canvasX,
 			canvasY,
@@ -4203,38 +4007,14 @@ function drawRoboPath() {
 }
 
 function setRoboRotationDegree(angle: number) {
-	roboRotation = angle;
 	roboPosition.angle = angle;
-
-	robo.style.setProperty("--rotation", `${angle + mapProjectionRotation}deg`);
-
-	if (lockOrientation && followRobo) {
-		robo.style.setProperty("--rotation", `${0}deg`);
-		mapProjectionRotation = 360 - angle;
-
-		//setRoboPositionByWorldCoordsAndDrawPath(roboPosition.x, roboPosition.y);
-		//drawMap();
-		//drawRoboPath();
-		console.log("--rotation locked", "0deg", mapProjectionRotation);
-	} else {
-		console.log(
-			"--rotation",
-			angle + mapProjectionRotation + "deg",
-			angle,
-			mapProjectionRotation,
-		);
-	}
+	render();
 }
 
 document.getElementById("centerButton")?.addEventListener("click", () => {
 	if (followRobo) return;
 
-	//canvas_originX = width / 2;
-	//canvas_originY = height / 2;
-	setCanvasOriginToRoboPosition();
-
-	drawMap();
-	setRoboPositionByWorldCoordsAndDrawPath(roboPosition.x, roboPosition.y);
+	render({ centerRobot: true });
 });
 
 const followRoboCheckbox = document.getElementById(
@@ -4255,16 +4035,9 @@ followRoboCheckbox?.addEventListener("input", () => {
 		.getElementById("rotationDiv")
 		?.classList.toggle("disabled", lockOrientation && followRobo);
 
-	if (followRobo == false) {
-		const slider = document.getElementById(
-			"rotationSlider",
-		) as HTMLInputElement;
-		const northRotation = parseFloat(slider.value);
-
+	if (!followRobo) {
 		// Nordierung aus dem Slider wiederherstellen
-		if (!isNaN(northRotation)) {
-			mapProjectionRotation = northRotation;
-		}
+		mapProjectionRotation = sliderMapProjectionRotation;
 
 		const canvas_unrotatedX = roboPosition.x * SCALE;
 		const canvas_unrotatedY = -roboPosition.y * SCALE; // Y-Achse invertiert
@@ -4282,18 +4055,10 @@ followRoboCheckbox?.addEventListener("input", () => {
 		canvas_originX = width / 2 - rx;
 		canvas_originY = height / 2 - ry;
 
-		setRoboRotationDegree(roboRotation);
-		drawMap();
-		//setRoboPosition(canvas_unrotatedX, canvas_unrotatedY);
-		setRoboPositionByWorldCoordsAndDrawPath(roboPosition.x, roboPosition.y);
-
-		//drawRoboPath();
+		render();
 	} else {
 		// FOLLOW wurde aktiviert
-		setRoboPositionByWorldCoordsAndDrawPath(roboPosition.x, roboPosition.y);
-		setCanvasOriginToRoboPosition();
-		drawMap();
-		drawRoboPath();
+		render(); // center should be active
 	}
 });
 
@@ -4305,7 +4070,7 @@ lockOrientationCheckbox?.addEventListener("input", () => {
 		?.classList.toggle("disabled", lockOrientation && followRobo);
 
 	console.log({
-		roboRotation,
+		roboAngle: roboPosition.angle,
 		sliderRotation: (
 			document.getElementById("rotationSlider") as HTMLInputElement | null
 		)?.valueAsNumber,
@@ -4314,35 +4079,17 @@ lockOrientationCheckbox?.addEventListener("input", () => {
 	});
 
 	if (!lockOrientation && followRobo) {
-		const target = document.getElementById(
-			"rotationSlider",
-		) as HTMLInputElement;
-		const newRotation = parseFloat(target.value);
-		if (!isNaN(newRotation)) {
-			mapProjectionRotation = newRotation;
+		mapProjectionRotation = sliderMapProjectionRotation;
 
-			/*setRoboRotationDegree(roboPosition.angle);
-			setRoboPositionByWorldCoordsAndDrawPath(
-				roboPosition.x,
-				roboPosition.y,
-			);
-			setCanvasOriginToRoboPosition();
-			drawMap();
-			drawRoboPath();*/
-
-			redrawFollowView();
-		}
+		render();
 	} else if (lockOrientation && followRobo) {
-		setRoboRotationDegree(roboPosition.angle);
-		setRoboPositionByWorldCoordsAndDrawPath(roboPosition.x, roboPosition.y);
-		setCanvasOriginToRoboPosition();
-		drawMap();
-		drawRoboPath();
+		render();
 	}
 });
 
 window.addEventListener("resize", () => {
 	const newRect = mapCanvas.getBoundingClientRect();
+	rect = newRect;
 
 	const newWidth = newRect.width;
 	const newHeight = newRect.height;
@@ -4351,7 +4098,6 @@ window.addEventListener("resize", () => {
 	const deltaHeight = newHeight - height;
 
 	if (newWidth !== width || newHeight !== height) {
-		rect = newRect;
 		width = newWidth;
 		height = newHeight;
 		mapCanvas.width = width;
@@ -4360,7 +4106,7 @@ window.addEventListener("resize", () => {
 		canvas_originX += deltaWidth / 2;
 		canvas_originY += deltaHeight / 2;
 
-		drawMap();
+		render();
 	}
 });
 
@@ -4379,29 +4125,6 @@ function renderMeasurementTape() {
 		measurementTape?.style.setProperty("--width", SCALE * 250 + "px");
 		measureLabel.textContent = "2,5cm";
 	} else if (SCALE >= 0.3) {
-		measurementTape?.style.setProperty("--width", SCALE * 500 + "px");
-		measureLabel.textContent = "5cm";
-	} else {
-		measurementTape?.style.setProperty("--width", SCALE * 1000 + "px");
-		measureLabel.textContent = "10cm";
-	}
-}
-
-function renderMeasurementTape_old() {
-	const measurementTape = document.getElementById("measurementTape");
-	const measureLabel = document.getElementById("measureLabel");
-	if (!measureLabel) return;
-
-	if (SCALE >= 3) {
-		measurementTape?.style.setProperty("--width", SCALE * 50 + "px");
-		measureLabel.textContent = "5mm";
-	} else if (SCALE >= 1) {
-		measurementTape?.style.setProperty("--width", SCALE * 100 + "px");
-		measureLabel.textContent = "1cm";
-	} else if (SCALE > 0.3) {
-		measurementTape?.style.setProperty("--width", SCALE * 250 + "px");
-		measureLabel.textContent = "2,5cm";
-	} else if (SCALE > 0.1) {
 		measurementTape?.style.setProperty("--width", SCALE * 500 + "px");
 		measureLabel.textContent = "5cm";
 	} else {
@@ -4436,16 +4159,73 @@ function setCanvasOriginToRoboPosition() {
 	canvas_originY = height / 2 - ry;
 }
 
-function redrawFollowView() {
-	// Aktualisiert im Lock-Modus auch mapRotation.
-	setRoboRotationDegree(roboRotation);
+// NEEEEWWW
 
-	// Benutzt den jetzt aktuellen Winkel.
-	setCanvasOriginToRoboPosition();
+function worldToCanvas(x: number, y: number) {
+	const offset = rotatePoint(
+		x * SCALE,
+		-y * SCALE,
+		0,
+		0,
+		mapProjectionRotation,
+	);
 
-	robo.style.setProperty("--x", `${width / 2}px`);
-	robo.style.setProperty("--y", `${height / 2}px`);
+	return {
+		x: canvas_originX + offset.x,
+		y: canvas_originY + offset.y,
+	};
+}
+
+function render({ centerRobot = false } = {}) {
+	const headingLocked = followRobo && lockOrientation;
+
+	mapProjectionRotation = headingLocked
+		? -roboPosition.angle
+		: sliderMapProjectionRotation;
+
+	if (hasFirstPosition && (followRobo || centerRobot)) {
+		setCanvasOriginToRoboPosition();
+	}
 
 	drawMap();
 	drawRoboPath();
+
+	if (!hasFirstPosition) return;
+
+	const { x, y } = worldToCanvas(roboPosition.x, roboPosition.y);
+	const screenAngle = headingLocked
+		? 0
+		: roboPosition.angle + mapProjectionRotation;
+
+	robo.style.setProperty("--x", `${x}px`);
+	robo.style.setProperty("--y", `${y}px`);
+	robo.style.setProperty("--rotation", `${screenAngle}deg`);
+}
+
+function addRoboPathPoint() {
+	roboPosition.path.unshift({
+		// shift other points back
+		worldX: roboPosition.x,
+		worldY: roboPosition.y,
+		timestamp: performance.now(),
+	});
+
+	shortenRoboPath();
+}
+
+// könnte in interval aufgerufen werden, um path auch ohne positionsupdates verschwinden zu lassen
+function shortenRoboPath() {
+	if (!roboPosition.path[0] || !roboPosition.path[0].timestamp) return;
+	let latestTimestamp = roboPosition.path[0].timestamp; // Newest point on array start
+	let maxTimestampDelta = 5 * 1000; // 5s in ms
+
+	for (let i = roboPosition.path.length - 1; i >= 0; i--) {
+		const point = roboPosition.path[i];
+		if (latestTimestamp - point.timestamp > maxTimestampDelta) {
+			roboPosition.path.pop();
+		} else {
+			// Punkte immer in richtiger timestamp reihenfolge - sobald ein Punkt von hinten erreicht wird der "jung" genug ist müssen es die davor auch sein -> break
+			break;
+		}
+	}
 }

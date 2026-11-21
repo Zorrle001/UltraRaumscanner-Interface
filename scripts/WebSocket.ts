@@ -31,7 +31,7 @@ ws.onmessage = async (e) => {
 		for (const point of json.data.points) {
 			(globalThis as any).MAP_POINTS.push(point);
 		}
-		drawEverything();
+		render();
 	} else if (json.id == "car") {
 		let nowT = performance.now();
 		//console.log("deltaT", nowT - lastT);
@@ -39,8 +39,11 @@ ws.onmessage = async (e) => {
 
 		//console.log("CAR", json.data);
 		//console.log(json.data.x, json.data.y);
-		setPublicRoboRotationRadiant(json.data.angle);
-		setPublicRoboPosition(json.data.x, json.data.y);
+		setPublicRoboPosition(
+			json.data.x,
+			json.data.y,
+			radientToDegree(json.data.angle),
+		);
 
 		//drawEverything();
 	} else {
