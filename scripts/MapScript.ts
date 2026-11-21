@@ -3643,6 +3643,8 @@ function setPublicRoboPosition(x: number, y: number, angleDegree: number) {
 (globalThis as any).setPublicRoboPosition = setPublicRoboPosition;
 (globalThis as any).radientToDegree = radientToDegree;
 (globalThis as any).render = render;
+(globalThis as any).worldToCanvas = worldToCanvas;
+(globalThis as any).canvasToWorld = canvasToWorld;
 
 let MAP_POINTS: Point[] = (globalThis as any).MAP_POINTS;
 
@@ -3874,14 +3876,12 @@ function showPointerInfo(e: PointerEvent) {
 	const pointerCoords = document.getElementById("pointerCoords");
 	if (pointerInfo && pointerCoords) {
 		pointerInfo.classList.remove("hidden");
-		let POINTER_X = (e.clientX - rect.left - canvas_originX) * SCALE;
-		let POINTER_Y = (e.clientY - rect.top - canvas_originY) * -1 * SCALE;
-		const { x: rotatedPointerX, y: rotatedPointerY } = rotatePoint(
-			POINTER_X,
-			POINTER_Y,
-			canvas_originX,
-			canvas_originY,
-			mapProjectionRotation,
+		let POINTER_CANVASX = e.clientX - rect.left;
+		let POINTER_CANVASY = e.clientY - rect.top;
+		console.log("POINTER_CANVAS:", POINTER_CANVASX, POINTER_CANVASY);
+		const { x: rotatedPointerX, y: rotatedPointerY } = canvasToWorld(
+			POINTER_CANVASX,
+			POINTER_CANVASY,
 		);
 		pointerCoords.textContent = `(${Math.round(rotatedPointerX * 10) / 10} / ${Math.round(rotatedPointerY * 10) / 10})`;
 	}
@@ -4111,25 +4111,26 @@ window.addEventListener("resize", () => {
 });
 
 function renderMeasurementTape() {
+	// 1px == 1mm
 	const measurementTape = document.getElementById("measurementTape");
 	const measureLabel = document.getElementById("measureLabel");
 	if (!measureLabel) return;
 
 	if (SCALE >= 2) {
 		measurementTape?.style.setProperty("--width", SCALE * 50 + "px");
-		measureLabel.textContent = "5mm";
+		measureLabel.textContent = "5cm";
 	} else if (SCALE >= 0.9) {
 		measurementTape?.style.setProperty("--width", SCALE * 100 + "px");
-		measureLabel.textContent = "1cm";
+		measureLabel.textContent = "10cm";
 	} else if (SCALE >= 0.5) {
 		measurementTape?.style.setProperty("--width", SCALE * 250 + "px");
-		measureLabel.textContent = "2,5cm";
+		measureLabel.textContent = "25cm";
 	} else if (SCALE >= 0.3) {
 		measurementTape?.style.setProperty("--width", SCALE * 500 + "px");
-		measureLabel.textContent = "5cm";
+		measureLabel.textContent = "0,5m";
 	} else {
 		measurementTape?.style.setProperty("--width", SCALE * 1000 + "px");
-		measureLabel.textContent = "10cm";
+		measureLabel.textContent = "1m";
 	}
 }
 
@@ -4160,11 +4161,13 @@ function setCanvasOriginToRoboPosition() {
 }
 
 // NEEEEWWW
-
 function worldToCanvas(x: number, y: number) {
+	const canvas_unrotatedX = x * SCALE;
+	const canvas_unrotatedY = -y * SCALE;
+
 	const offset = rotatePoint(
-		x * SCALE,
-		-y * SCALE,
+		canvas_unrotatedX,
+		canvas_unrotatedY,
 		0,
 		0,
 		mapProjectionRotation,
@@ -4173,6 +4176,27 @@ function worldToCanvas(x: number, y: number) {
 	return {
 		x: canvas_originX + offset.x,
 		y: canvas_originY + offset.y,
+	};
+}
+
+function canvasToWorld(canvasX: number, canvasY: number) {
+	const offsetX = canvasX - canvas_originX;
+	const offsetY = canvasY - canvas_originY;
+
+	const canvas_unrotated = rotatePoint(
+		offsetX,
+		offsetY,
+		0,
+		0,
+		-mapProjectionRotation,
+	);
+
+	const worldX = canvas_unrotated.x / SCALE;
+	const worldY = -canvas_unrotated.y / SCALE;
+
+	return {
+		x: worldX,
+		y: worldY,
 	};
 }
 
@@ -4217,7 +4241,7 @@ function addRoboPathPoint() {
 function shortenRoboPath() {
 	if (!roboPosition.path[0] || !roboPosition.path[0].timestamp) return;
 	let latestTimestamp = roboPosition.path[0].timestamp; // Newest point on array start
-	let maxTimestampDelta = 5 * 1000; // 5s in ms
+	let maxTimestampDelta = 4 * 1000; // 5s in ms
 
 	for (let i = roboPosition.path.length - 1; i >= 0; i--) {
 		const point = roboPosition.path[i];
