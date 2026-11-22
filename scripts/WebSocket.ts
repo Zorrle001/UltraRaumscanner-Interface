@@ -46,8 +46,18 @@ ws.onmessage = async (e) => {
 		);
 
 		//drawEverything();
+	} else if (json.id == "room_lines") {
+		for (const line of json.data) {
+			(globalThis as any).ROOM_LINES.push(line);
+		}
+		render();
+	} else if (json.id == "expected_lines") {
+		for (const line of json.data) {
+			(globalThis as any).EXPECTED_LINES.push(line);
+		}
+		render();
 	} else {
-		console.error("Message ID is unknown");
+		console.error("Message ID is unknown", json.id);
 	}
 };
 

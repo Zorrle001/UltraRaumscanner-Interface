@@ -1,7 +1,7 @@
 function detailed_origin_scaling(oldScale: number, newScale: number) {
 	// Zurückrechnen auf rotierte x,y koordinaten
-	let rx_old = width / 2 - canvas_originX;
-	let ry_old = height / 2 - canvas_originY;
+	let rx_old = canvasWidth / 2 - canvas_originX;
+	let ry_old = canvasHeight / 2 - canvas_originY;
 
 	// Zurückrotieren -> negativer mapRotation winkel
 	const { x: x_old, y: y_old } = rotatePoint(
@@ -34,8 +34,8 @@ function detailed_origin_scaling(oldScale: number, newScale: number) {
 	// DIE ROTATIONS HEBEN SICH AUF -> KÜRZBAR AUF:
 	const k = newScale / oldScale;
 
-	canvas_originX = width / 2 - (width / 2 - canvas_originX) * k;
-	canvas_originY = height / 2 - (height / 2 - canvas_originY) * k;
+	canvas_originX = canvasWidth / 2 - (canvasWidth / 2 - canvas_originX) * k;
+	canvas_originY = canvasHeight / 2 - (canvasHeight / 2 - canvas_originY) * k;
 }
 
 function drawLine(x1: number, y1: number, x2: number, y2: number) {
