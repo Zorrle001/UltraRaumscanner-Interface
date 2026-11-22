@@ -1,4 +1,4 @@
-const FPS = 60;
+const FPS = 10;
 const INTERVAL = 1000 / FPS;
 const TAU = Math.PI * 2;
 
